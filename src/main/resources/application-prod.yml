@@ -1,0 +1,28 @@
+# 生产环境配置
+spring:
+  config:
+    activate:
+      on-profile: prod
+  
+  datasource:
+    url: jdbc:mysql://production-db-host:3306/blog_system?useUnicode=true&characterEncoding=utf8&useSSL=true&serverTimezone=Asia/Shanghai
+    username: ${DB_USERNAME:blog_user}
+    password: ${DB_PASSWORD:your_password}
+  
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: 0
+    lettuce:
+      pool:
+        max-active: 50
+        min-idle: 10
+
+server:
+  port: 80
+
+logging:
+  level:
+    root: WARN
+    com.blog: INFO

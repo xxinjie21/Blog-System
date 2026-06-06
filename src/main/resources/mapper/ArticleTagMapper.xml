@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.blog.mapper.ArticleTagMapper">
+
+    <!-- 批量插入文章标签关联 -->
+    <insert id="batchInsert">
+        INSERT INTO blog_article_tag (article_id, tag_id, create_time)
+        VALUES
+        <foreach collection="tagIds" item="tagId" separator=",">
+            (#{articleId}, #{tagId}, NOW())
+        </foreach>
+    </insert>
+
+    <!-- 根据文章 ID 删除关联关系 -->
+    <delete id="deleteByArticleId">
+        DELETE FROM blog_article_tag WHERE article_id = #{articleId}
+    </delete>
+
+    <!-- 根据文章 ID 查询标签 ID 列表 -->
+    <select id="selectTagIdsByArticleId" resultType="java.lang.Long">
+        SELECT tag_id FROM blog_article_tag WHERE article_id = #{articleId}
+    </select>
+
+</mapper>

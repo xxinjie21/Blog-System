@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.blog.mapper.CommentMapper">
+
+    <!-- 根据文章 ID 查询评论列表 -->
+    <select id="selectByArticleId" resultType="com.blog.entity.Comment">
+        SELECT * FROM blog_comment 
+        WHERE article_id = #{articleId} 
+        AND is_audit = 1
+        ORDER BY create_time DESC
+        <!-- 优化：使用复合索引 idx_article_audit_time -->
+    </select>
+
+</mapper>
