@@ -176,8 +176,8 @@ mvn spring-boot:run
 
 ### 5. 访问接口
 ```
-http://localhost:8080/api/articles/page
-http://localhost:8080/api/articles/hot
+http://localhost:8080/articles/page
+http://localhost:8080/articles/hot
 ```
 
 ## 📝 接口文档
@@ -185,33 +185,33 @@ http://localhost:8080/api/articles/hot
 ### 文章管理
 | 接口 | 方法 | 说明 |
 |------|------|------|
-| /api/articles/page | GET | 分页查询文章 |
-| /api/articles/{id} | GET | 获取文章详情 |
-| /api/articles | POST | 发布文章 |
-| /api/articles | PUT | 更新文章 |
-| /api/articles/{id} | DELETE | 删除文章 |
-| /api/articles/hot | GET | 热点文章 TOP10 |
-| /api/articles/{id}/view | POST | 增加浏览量 |
-| /api/articles/{id}/like | POST | 点赞文章 |
-| /api/articles/{id}/like | DELETE | 取消点赞 |
+| /articles/page | GET | 分页查询文章 |
+| /articles/{id} | GET | 获取文章详情 |
+| /articles | POST | 发布文章 |
+| /articles | PUT | 更新文章 |
+| /articles/{id} | DELETE | 删除文章 |
+| /articles/hot | GET | 热点文章 TOP10 |
+| /articles/{id}/view | POST | 增加浏览量 |
+| /articles/{id}/like | POST | 点赞文章 |
+| /articles/{id}/like | DELETE | 取消点赞 |
 
 ### 分类管理
 | 接口 | 方法 | 说明 |
 |------|------|------|
-| /api/categories/list | GET | 获取分类列表 |
+| /categories/list | GET | 获取分类列表 |
 
 ### 标签管理
 | 接口 | 方法 | 说明 |
 |------|------|------|
-| /api/tags/hot | GET | 热门标签列表 |
+| /tags/hot | GET | 热门标签列表 |
 
 ### 评论管理
 | 接口 | 方法 | 说明 |
 |------|------|------|
-| /api/comments/article/{articleId} | GET | 获取文章评论 |
-| /api/comments | POST | 添加评论 |
-| /api/comments/{id} | DELETE | 删除评论 |
-| /api/comments/{id}/like | POST | 点赞评论 |
+| /comments/article/{articleId} | GET | 获取文章评论 |
+| /comments | POST | 添加评论 |
+| /comments/{id} | DELETE | 删除评论 |
+| /comments/{id}/like | POST | 点赞评论 |
 
 ## 🎯 性能优化指标
 
