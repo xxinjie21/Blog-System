@@ -180,8 +180,8 @@ private String title;
 
 ### 1. 资源命名
 ```
-✅ /api/articles        # 复数名词
-❌ /api/getArticles     # 动词
+✅ /articles        # 复数名词
+❌ /getArticles     # 动词
 ```
 
 ### 2. HTTP 方法
