@@ -240,7 +240,7 @@ http://localhost:8080/articles/hot
 
 | 方法 | URL | 说明 |
 |------|-----|------|
-| GET | `/categories/list` | 分类���表（按 sort_order DESC） |
+| GET | `/categories/list` | 分类列表（按 sort_order DESC） |
 | GET | `/tags/hot` | 热门标签 TOP N |
 | GET | `/comments/article/{articleId}` | 文章评论（楼中楼结构） |
 | POST | `/comments` | 添加评论 |
@@ -325,7 +325,7 @@ High-Performance-Caching-Blog-System/
 
 ### Q: 热点文章缓存过期后怎么办？
 
-缓存过期��自动从 DB 加载并重建缓存，30 分钟后再次过期。
+缓存过期后自动从 DB 加载并重建缓存，30 分钟后再次过期。
 
 ---
 
