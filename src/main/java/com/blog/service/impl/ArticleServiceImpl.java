@@ -195,14 +195,20 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         Collection<String> hotArticleIds = articleCache.getHotArticles();
         
         if (hotArticleIds != null && !hotArticleIds.isEmpty()) {
-            // 2. 批量查询文章详情
             List<Long> ids = hotArticleIds.stream()
                     .map(Long::valueOf)
                     .collect(Collectors.toList());
             
             List<Article> articles = listByIds(ids);
             if (articles != null && !articles.isEmpty()) {
-                // 3. 构建 VO 列表
+                // 按 ZSet score 顺序排列
+                Map<Long, Integer> orderMap = new HashMap<>();
+                int idx = 0;
+                for (String id : hotArticleIds) {
+                    orderMap.put(Long.valueOf(id), idx++);
+                }
+                articles.sort(Comparator.comparingInt(a -> orderMap.getOrDefault(a.getId(), Integer.MAX_VALUE)));
+                
                 return articles.stream()
                         .map(this::buildHotArticleVO)
                         .collect(Collectors.toList());
@@ -227,11 +233,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     public void incrementViewCount(Long articleId) {
-        // Redis 原子操作增加浏览量
-        viewCountCache.incrementViewCount(articleId);
-        
-        // 更新热点文章分数
-        Long newViewCount = viewCountCache.getViewCount(articleId);
+        Long newViewCount = viewCountCache.incrementViewCount(articleId);
         articleCache.updateHotArticleScore(articleId, newViewCount);
     }
 

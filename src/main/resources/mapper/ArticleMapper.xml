@@ -66,10 +66,14 @@
 
     <!-- 批量更新浏览量 -->
     <update id="batchUpdateViewCounts">
-        <foreach collection="viewCounts" item="count" index="articleId" separator=";">
-            UPDATE blog_article 
-            SET view_count = #{count} 
-            WHERE id = #{articleId}
+        UPDATE blog_article SET view_count = CASE id
+        <foreach collection="viewCounts" item="count" index="articleId">
+            WHEN #{articleId} THEN #{count}
+        </foreach>
+        END
+        WHERE id IN
+        <foreach collection="viewCounts" item="count" index="articleId" open="(" separator="," close=")">
+            #{articleId}
         </foreach>
     </update>
 

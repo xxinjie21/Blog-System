@@ -67,20 +67,31 @@ public class LikeCache {
         String likeCountKey = buildLikeCountKey(articleId);
         String userLikeKey = buildUserLikeKey(articleId);
 
-        // 检查是否已点赞
-        RSet<String> userLikeSet = redissonClient.getSet(userLikeKey);
-        if (userLikeSet.contains(userId)) {
-            return false; // 已点赞过，不能重复点赞
+        // 使用分布式锁保证原子性
+        String lockKey = "lock:like:" + articleId + ":" + userId;
+        org.redisson.api.RLock lock = redissonClient.getLock(lockKey);
+        try {
+            lock.lock(5, java.util.concurrent.TimeUnit.SECONDS);
+
+            // 检查是否已点赞
+            RSet<String> userLikeSet = redissonClient.getSet(userLikeKey);
+            if (userLikeSet.contains(userId)) {
+                return false;
+            }
+
+            // 点赞数 +1
+            RAtomicLong likeCount = redissonClient.getAtomicLong(likeCountKey);
+            likeCount.incrementAndGet();
+            
+            // 记录用户点赞
+            userLikeSet.add(userId);
+
+            return true;
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
         }
-
-        // 点赞数 +1
-        RAtomicLong likeCount = redissonClient.getAtomicLong(likeCountKey);
-        likeCount.incrementAndGet();
-        
-        // 记录用户点赞
-        userLikeSet.add(userId);
-
-        return true;
     }
 
     /**
@@ -94,20 +105,27 @@ public class LikeCache {
         String likeCountKey = buildLikeCountKey(articleId);
         String userLikeKey = buildUserLikeKey(articleId);
 
-        // 检查是否已点赞
-        RSet<String> userLikeSet = redissonClient.getSet(userLikeKey);
-        if (!userLikeSet.contains(userId)) {
-            return false; // 未点赞过
+        String lockKey = "lock:like:" + articleId + ":" + userId;
+        org.redisson.api.RLock lock = redissonClient.getLock(lockKey);
+        try {
+            lock.lock(5, java.util.concurrent.TimeUnit.SECONDS);
+
+            RSet<String> userLikeSet = redissonClient.getSet(userLikeKey);
+            if (!userLikeSet.contains(userId)) {
+                return false;
+            }
+
+            RAtomicLong likeCount = redissonClient.getAtomicLong(likeCountKey);
+            likeCount.decrementAndGet();
+            
+            userLikeSet.remove(userId);
+
+            return true;
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
         }
-
-        // 点赞数 -1
-        RAtomicLong likeCount = redissonClient.getAtomicLong(likeCountKey);
-        likeCount.decrementAndGet();
-        
-        // 移除用户点赞记录
-        userLikeSet.remove(userId);
-
-        return true;
     }
 
     /**

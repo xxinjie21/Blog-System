@@ -86,6 +86,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void likeComment(Long commentId) {
         Comment comment = getById(commentId);
         if (comment == null) {

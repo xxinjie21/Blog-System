@@ -17,9 +17,9 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements TagSe
 
     @Override
     public List<Tag> listHotTags(Integer limit) {
-        // 按文章数量降序排列，获取热门标签
+        int safeLimit = (limit != null && limit > 0 && limit <= 100) ? limit : 10;
         return list(new QueryWrapper<Tag>()
                 .orderByDesc("article_count")
-                .last("LIMIT " + (limit != null ? limit : 10)));
+                .last("LIMIT " + safeLimit));
     }
 }

@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -65,7 +66,7 @@ public class ArticleCache {
         String key = buildArticleDetailKey(articleId);
         RBucket<Object> bucket = redissonClient.getBucket(key);
         // 优化：添加随机时间防雪崩（±300 秒）
-        int randomTtl = articleDetailTtl + (int) (Math.random() * 600 - 300);
+        int randomTtl = articleDetailTtl + ThreadLocalRandom.current().nextInt(-300, 301);
         bucket.set(articleDetail, randomTtl, TimeUnit.SECONDS);
     }
 
