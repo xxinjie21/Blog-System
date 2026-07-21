@@ -12,7 +12,7 @@
 
 **基于 Spring Boot + MyBatis-Plus + Redisson + MySQL 的高性能博客后端系统**
 
-[核心特性](#-核心特性) • [技术栈](#-技术栈) • [快速开始](#-快速开始) • [API 接口](#-api-接口) • [项目结构](#-项目结构) • [面试考点](#-面试考点)
+[核心特性](#-核心特性) • [技术栈](#-技术栈) • [快速开始](#-快速开始) • [API 接口](#-api-接口) • [项目结构](#-项目结构)
 
 </div>
 
@@ -72,7 +72,7 @@ Score: view_count
 
 ### 4. 评论楼中楼
 
-- `CommentVO` 嵌套 `replies: List<CommentVO>` 实现楼中楼回复
+- `CommentVO` 嵌套 `replies: List<CommentVO>` 实现楼中楼���复
 - 支持评论点赞
 
 ---
@@ -305,53 +305,11 @@ High-Performance-Caching-Blog-System/
 | **Redisson 全面使用** | 不用 Spring RedisTemplate，全部通过 Redisson AtomicLong/RSet/RLock/RBucket 操作 |
 | **异步持久化** | Quartz 每 5 分钟将 Redis 浏览量/点赞数批量同步到 MySQL |
 | **ZSet 动态排序** | 热点文章实时更新 score，ZREVRANGE 获取 TOP10 |
-| **Set 防重复点赞** | SISMEMBER O(1) 判断 + 分布式锁防并发 |
-| **缓存随机偏移** | TTL ±300s 随机偏移，防止缓存雪崩 |
+| **Set 防重复点赞** | SISMEMBER O(1) 判断 + 分布式锁防并��� |
+| **缓��随机偏移** | TTL ±300s 随机偏移，防止缓存雪崩 |
 | **QuartzJobBean** | `ApplicationContextAware` 手动获取 Bean，解决 Quartz 无法注入 Spring Bean 问题 |
 | **楼中楼评论** | `CommentVO.replies` 嵌套子评论列表 |
 | **复合索引** | 文章表 3 个复合索引，评论表 1 个复合索引 |
-
----
-
-## 面试考点
-
-### 1. Redis 缓存
-
-**Q1: 如何选择 Redis 数据结构？**
-
-**参考答案**：
-> 1. **AtomicLong**：浏览量/点赞数，INCR/DECR 原子操作
-> 2. **ZSet**：热点文章排行，score = view_count，ZREVRANGE 获取 TOP10
-> 3. **Set**：点赞用户记录，SISMEMBER O(1) 判断是否已点赞
-> 4. **RBucket**：文章详情，JSON 序列化存储
-> 5. **RLock**：点赞/取消的并发控制
-
-**Q2: 缓存过期策略如何设计？**
-
-**参考答案**：
-> 1. **随机偏移**：基础 TTL ± 300s，防止大量 Key 同时过期
-> 2. **Cache-Aside**：读 miss 时从 DB 加载并缓存，写时先更新 DB 再删缓存
-> 3. **定时兜底**：Quartz 每 5 分钟同步，即使缓存丢失也不影响 DB 数据
-
-### 2. 数据库优化
-
-**Q3: 索引设计原则？**
-
-**参考答案**：
-> 1. **复合索引最左前缀**：`(category_id, is_published)` 支持按分类+发布状态查询
-> 2. **高区分度字段在前**：`is_audit` 放在 `(article_id, is_audit, create_time)` 中间
-> 3. **覆盖索引**：`idx_view_count` 支持热门查询直接走索引
-> 4. **反范式冗余**：`article_count` 在 category/tag 表中冗余，避免 COUNT 查询
-
-### 3. Quartz 定时任务
-
-**Q4: 为什么 Quartz Job 不能用 @Autowired？**
-
-**参考答案**：
-> 1. **Quartz 自实例化**：Job 由 Quartz 框架直接 new，不走 Spring 容器
-> 2. **ApplicationContextAware**：实现该接口手动获取 Spring Bean
-> 3. **替代方案**：Spring `@Scheduled` 但不支持持久化和集群
-> 4. **选择 Quartz**：支持任务持久化、集群部署、misfire 策略
 
 ---
 
