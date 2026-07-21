@@ -72,7 +72,7 @@ Score: view_count
 
 ### 4. 评论楼中楼
 
-- `CommentVO` 嵌套 `replies: List<CommentVO>` 实现楼中楼���复
+- `CommentVO` 嵌套 `replies: List<CommentVO>` 实现楼中楼回复
 - 支持评论点赞
 
 ---
@@ -240,7 +240,7 @@ http://localhost:8080/articles/hot
 
 | 方法 | URL | 说明 |
 |------|-----|------|
-| GET | `/categories/list` | 分类列表（按 sort_order DESC） |
+| GET | `/categories/list` | 分类���表（按 sort_order DESC） |
 | GET | `/tags/hot` | 热门标签 TOP N |
 | GET | `/comments/article/{articleId}` | 文章评论（楼中楼结构） |
 | POST | `/comments` | 添加评论 |
@@ -305,8 +305,8 @@ High-Performance-Caching-Blog-System/
 | **Redisson 全面使用** | 不用 Spring RedisTemplate，全部通过 Redisson AtomicLong/RSet/RLock/RBucket 操作 |
 | **异步持久化** | Quartz 每 5 分钟将 Redis 浏览量/点赞数批量同步到 MySQL |
 | **ZSet 动态排序** | 热点文章实时更新 score，ZREVRANGE 获取 TOP10 |
-| **Set 防重复点赞** | SISMEMBER O(1) 判断 + 分布式锁防并��� |
-| **缓��随机偏移** | TTL ±300s 随机偏移，防止缓存雪崩 |
+| **Set 防重复点赞** | SISMEMBER O(1) 判断 + 分布式锁防并发 |
+| **缓存随机偏移** | TTL ±300s 随机偏移，防止缓存雪崩 |
 | **QuartzJobBean** | `ApplicationContextAware` 手动获取 Bean，解决 Quartz 无法注入 Spring Bean 问题 |
 | **楼中楼评论** | `CommentVO.replies` 嵌套子评论列表 |
 | **复合索引** | 文章表 3 个复合索引，评论表 1 个复合索引 |
@@ -325,7 +325,7 @@ High-Performance-Caching-Blog-System/
 
 ### Q: 热点文章缓存过期后怎么办？
 
-缓存过期后自动从 DB 加载并重建缓存，30 分钟后再次过期。
+缓存过期��自动从 DB 加载并重建缓存，30 分钟后再次过期。
 
 ---
 
