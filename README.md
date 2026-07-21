@@ -7,10 +7,12 @@
 ![MyBatis-Plus](https://img.shields.io/badge/MyBatis--Plus-3.5.3.1-orange.svg?style=flat-square)
 ![Redis](https://img.shields.io/badge/Redis-6.2-red.svg?style=flat-square)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-blue.svg?style=flat-square)
+![Redisson](https://img.shields.io/badge/Redisson-3.23.5-critical.svg?style=flat-square)
+![Quartz](https://img.shields.io/badge/Quartz-2.3.2-blue.svg?style=flat-square)
 
-**基于 SpringBoot + MyBatis-Plus + Redis + MySQL 的高性能博客后端系统**
+**基于 Spring Boot + MyBatis-Plus + Redisson + MySQL 的高性能博客后端系统**
 
-[核心特性](#-核心特性) • [技术栈](#-技术栈) • [快速开始](#-快速开始) • [项目结构](#-项目结构) • [面试考点](#-面试考点)
+[核心特性](#-核心特性) • [技术栈](#-技术栈) • [快速开始](#-快速开始) • [API 接口](#-api-接口) • [项目结构](#-项目结构) • [面试考点](#-面试考点)
 
 </div>
 
@@ -18,16 +20,16 @@
 
 ## 项目介绍
 
-本项目是一个 **高性能博客后端系统**，主打热点文章 Redis 缓存优化，降低 DB 访问压力。实现了文章管理、互动功能、首页热点推荐等核心功能。
+本项目是一个 **高性能博客后端系统**，主打热点文章 Redis 缓存优化，降低 DB 访问压力。使用 Redisson 作为 Redis 客户端，实现了浏览量原子计数、点赞防重复、热点文章 TOP10 动态排序等核心功能。
 
 ### 核心理念
 
 **Redis 缓存驱动，DB 访问降低 80%+。**
 
-- 热点文章全部缓存，首页响应 < 100ms
-- 浏览量 Redis 原子计数，异步持久化
-- 点赞数据 Redis Set 防重复，异步落库
-- 缓存命中率 > 90%
+- 热点文章 ZSet 动态排序，首页响应 < 100ms
+- 浏览量 Redisson AtomicLong 原子递增，Quartz 每 5 分钟异步持久化
+- 点赞 RSet 防重复 + 分布式锁，异步落库
+- 缓存过期随机偏移防雪崩
 
 ---
 
@@ -36,41 +38,42 @@
 ### 1. 文章浏览量缓存
 
 ```
-浏览请求 → Redis INCR 原子递增 → 定时任务每 5 分钟同步到 MySQL
+浏览请求 → Redisson AtomicLong INCR → Quartz 每 5 分钟批量同步到 MySQL
 ```
 
-- Redis INCR 原子操作，避免 DB 行锁竞争
-- 异步持久化，减少 DB 压力
-- 崩溃恢复：DB 基础值 + Redis 增量值
+- `ViewCountCache` 使用 `RAtomicLong` 原子操作，避免 DB 行锁竞争
+- `DataPersistJob`（QuartzJobBean）定时扫描 `blog:article:view:*` 批量 UPDATE
+- 手动复位：持久化后 `setViewCount(0)`，下次从 DB 基准值重建
 
 ### 2. 热点文章 TOP10 缓存
 
 ```
 Key: blog:hot:articles (ZSet)
 Score: view_count
-操作：ZREVRANGE 获取 TOP10
+操作：ZREVRANGE 0 9 获取 TOP10
 ```
 
-- ZSet 动态排序，支持实时更新
-- 缓存过期时间 30 分钟（防雪崩）
-- 文章更新时主动清除缓存
+- `ArticleCache` 使用 `RScoredSortedSet` 动态排序
+- 文章浏览量变更时实时更新 score
+- 文章更新/删除时主动清除缓存
+- 缓存过期时间 30 分钟（随机 ±300s 偏移防雪崩）
 
 ### 3. 点赞数据缓存
 
 ```
-点赞总数：blog:article:like:{article_id} (String, INCR/DECR)
-用户点赞记录：blog:article:like:users:{article_id} (Set, 防重复)
+点赞计数：blog:article:like:{article_id} (RAtomicLong)
+用户记录：blog:article:like:users:{article_id} (RSet)
+分布式锁：lock:like:{article_id}:{userId} (RLock, 5s)
 ```
 
-- Set 判断是否已点赞，防止重复
-- INCR/DECR 原子操作
-- 异步消息队列持久化
+- `LikeCache` 使用 `RSet` 的 SISMEMBER 判断是否已点赞
+- `RAtomicLong` INCR/DECR 原子操作
+- 分布式锁防并发点赞/取消
 
-### 4. 评论管理
+### 4. 评论楼中楼
 
-- 楼中楼回复
-- Redis 缓存热门文章评论
-- 分页查询优化
+- `CommentVO` 嵌套 `replies: List<CommentVO>` 实现楼中楼回复
+- 支持评论点赞
 
 ---
 
@@ -83,15 +86,11 @@ Score: view_count
 | MyBatis-Plus | 3.5.3.1 | ORM 持久层框架 |
 | MySQL | 8.0 | 关系型数据库 |
 | Redis | 6.2 | 缓存中间件 |
+| Redisson | 3.23.5 | Redis 客户端（AtomicLong / RSet / RLock / ZSet） |
 | Quartz | 2.3.2 | 定时任务调度 |
-| Lombok | 1.18.28 | 简化代码 |
-
-### 核心依赖
-
-- **Redis**：浏览量计数、热点文章排序、点赞防重复
-- **Quartz**：定时持久化 Redis 数据到 MySQL
-- **MyBatis-Plus**：简化 CRUD + 分页查询
-- **Lombok**：简化实体类代码
+| FastJSON2 | 2.0.32 | JSON 序列化 |
+| Guava | 31.1-jre | 工具类 |
+| Lombok | 1.18.12 | 简化代码 |
 
 ---
 
@@ -101,7 +100,7 @@ Score: view_count
 
 ```bash
 # JDK 1.8
-java -v
+java -version
 
 # Maven 3.6+
 mvn -v
@@ -131,7 +130,7 @@ mysql -u root -p < docs/init.sql
 ```yaml
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/blog_system
+    url: jdbc:mysql://localhost:3306/blog_system?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: root
     password: your_password
   redis:
@@ -155,49 +154,111 @@ http://localhost:8080/articles/hot
 
 ---
 
-## 功能详解
+## 数据库设计
 
-### 文章管理
+### 表结构（5 张表，25+ 索引）
 
-| 接口 | 方法 | 说明 |
+#### blog_article 文章表（15 列）
+
+| 字段 | 类型 | 说明 |
 |------|------|------|
-| /articles/page | GET | 分页查询文章 |
-| /articles/{id} | GET | 获取文章详情 |
-| /articles | POST | 发布文章 |
-| /articles | PUT | 更新文章 |
-| /articles/{id} | DELETE | 删除文章 |
-| /articles/hot | GET | 热点文章 TOP10 |
-| /articles/{id}/view | POST | 增加浏览量 |
-| /articles/{id}/like | POST | 点赞文章 |
-| /articles/{id}/like | DELETE | 取消点赞 |
+| `id` | BIGINT | PK，自增 |
+| `title` | VARCHAR(200) | 索引 |
+| `summary` | VARCHAR(500) | 摘要 |
+| `content` | LONGTEXT | 正文 |
+| `cover_image` | VARCHAR(500) | 封面图 |
+| `category_id` | BIGINT | 分类索引 |
+| `author` | VARCHAR(50) | 作者索引 |
+| `view_count` | INT | 浏览量索引 |
+| `like_count` | INT | 点赞数 |
+| `comment_count` | INT | 评论数 |
+| `is_top` | TINYINT | 置顶 |
+| `is_published` | TINYINT | 发布状态索引 |
+| `deleted` | TINYINT | 逻辑删除 |
 
-### 分类 / 标签 / 评论
+**复合索引**: `(category_id, is_published)`, `(is_published, create_time)`
 
-| 接口 | 方法 | 说明 |
+#### blog_category 分类表（8 列）
+
+| 字段 | 类型 | 说明 |
 |------|------|------|
-| /categories/list | GET | 获取分类列表 |
-| /tags/hot | GET | 热门标签列表 |
-| /comments/article/{articleId} | GET | 获取文章评论 |
-| /comments | POST | 添加评论 |
-| /comments/{id} | DELETE | 删除评论 |
-| /comments/{id}/like | POST | 点赞评论 |
+| `id` | BIGINT | PK |
+| `name` | VARCHAR(50) | 唯一索引 |
+| `slug` | VARCHAR(50) | 唯一索引 |
+| `sort_order` | INT | 排序索引 |
+| `article_count` | INT | 文章计数（反范式） |
 
-### 数据库索引设计
+#### blog_tag 标签表（5 列）
 
-```sql
--- 文章表索引
-idx_title              # 标题搜索
-idx_category_id        # 分类查询
-idx_author             # 作者查询
-idx_create_time        # 时间排序
-idx_view_count         # 热门查询
-idx_category_published # 复合索引（分类 + 发布）
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | BIGINT | PK |
+| `name` | VARCHAR(50) | 唯一索引 |
+| `slug` | VARCHAR(50) | 唯一索引 |
+| `article_count` | INT | 热门标签索引 |
 
--- 评论表索引
-idx_article_id              # 文章评论查询
-idx_parent_id               # 回复查询
-idx_article_audit_time      # 复合索引（文章 + 审核 + 时间）
-```
+#### blog_article_tag 文章标签关联表（3 列）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `article_id` | BIGINT | 复合 PK，FK CASCADE |
+| `tag_id` | BIGINT | 复合 PK，FK CASCADE |
+
+#### blog_comment 评论表（11 列）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | BIGINT | PK |
+| `article_id` | BIGINT | 索引 |
+| `user_name` | VARCHAR(50) | |
+| `content` | VARCHAR(1000) | |
+| `parent_id` | BIGINT | 回复查询索引（0=顶层） |
+| `like_count` | INT | |
+| `is_audit` | TINYINT | 审核状态 |
+
+**复合索引**: `(article_id, is_audit, create_time)`
+
+---
+
+## API 接口
+
+### 文章接口（9 个）
+
+| 方法 | URL | 说明 |
+|------|-----|------|
+| GET | `/articles/page` | 分页查询文章（支持 title/category/author/时间筛选） |
+| GET | `/articles/{id}` | 文章详情（Cache-Aside：Redis → DB） |
+| POST | `/articles` | 发布文章（@Transactional + 清除热点缓存） |
+| PUT | `/articles` | 更新文章（清除详情 + 热点缓存） |
+| DELETE | `/articles/{id}` | 逻辑删除（清除全部相关缓存） |
+| GET | `/articles/hot` | 热点文章 TOP10（Redis ZSet） |
+| POST | `/articles/{id}/view` | 增加浏览量（AtomicLong INCR） |
+| POST | `/articles/{id}/like` | 点赞（分布式锁 + Set 防重复） |
+| DELETE | `/articles/{id}/like` | 取消点赞 |
+
+### 分类 / 标签 / 评论（5 个）
+
+| 方法 | URL | 说明 |
+|------|-----|------|
+| GET | `/categories/list` | 分类列表（按 sort_order DESC） |
+| GET | `/tags/hot` | 热门标签 TOP N |
+| GET | `/comments/article/{articleId}` | 文章评论（楼中楼结构） |
+| POST | `/comments` | 添加评论 |
+| DELETE | `/comments/{id}` | 删除评论 |
+| POST | `/comments/{id}/like` | 评论点赞 |
+
+---
+
+## Redis 缓存设计
+
+| 数据结构 | Key 模式 | 用途 | TTL |
+|---------|---------|------|-----|
+| ZSet | `blog:hot:articles` | 热点文章排行 | 30min（随机偏移） |
+| AtomicLong | `blog:article:view:{id}` | 浏览量计数 | 永久（定时复位） |
+| AtomicLong | `blog:article:like:{id}` | 点赞计数 | 永久（定时复位） |
+| Set | `blog:article:like:users:{id}` | 点赞用户记录 | 永久 |
+| RBucket | `blog:article:detail:{id}` | 文章详情缓存 | 3600s（随机偏移） |
+| RLock | `lock:like:{articleId}:{userId}` | 点赞分布式锁 | 5s 超时 |
 
 ---
 
@@ -206,30 +267,33 @@ idx_article_audit_time      # 复合索引（文章 + 审核 + 时间）
 ```
 High-Performance-Caching-Blog-System/
 ├── src/main/java/com/blog/
-│   ├── BlogApplication.java          # 启动类
-│   ├── config/                       # 配置类
-│   │   ├── RedisConfig.java          # Redis 配置
-│   │   ├── MybatisPlusConfig.java    # MP 配置
-│   │   └── QuartzConfig.java         # 定时任务配置
-│   ├── controller/                   # 控制层
-│   ├── service/impl/                 # 业务层
-│   ├── mapper/                       # DAO 层
-│   ├── entity/                       # 实体类
-│   ├── dto/                          # 数据传输对象
-│   ├── vo/                           # 视图对象
-│   ├── cache/                        # 缓存策略层（核心）
-│   │   ├── ArticleCache.java
-│   │   ├── ViewCountCache.java
-│   │   └── LikeCache.java
-│   ├── job/                          # 定时任务
-│   │   └── DataPersistJob.java
-│   ├── util/RedisUtil.java           # 工具类
-│   └── exception/                    # 异常处理
-├── src/main/resources/
-│   ├── application.yml               # 配置文件
-│   └── mapper/                       # MyBatis XML
-└── docs/
-    └── init.sql                      # 数据库初始化脚本
+│   ├── BlogApplication.java          # 启动类(@EnableScheduling, @EnableAspectJAutoProxy)
+│   ├── cache/                         # 缓存策略层（核心）
+│   │   ├── ArticleCache.java          # 文章详情 + 热点 ZSet + 文章 ID 缓存
+│   │   ├── ViewCountCache.java        # AtomicLong 浏览量
+│   │   └── LikeCache.java             # AtomicLong + RSet + 分布式锁
+│   ├── config/
+│   │   ├── RedisConfig.java           # RedisTemplate + CacheManager + @EnableCaching
+│   │   ├── RedissonConfig.java        # RedissonClient 单机模式
+│   │   ├── MybatisPlusConfig.java     # 分页拦截器
+│   │   ├── MyMetaObjectHandler.java   # createTime/updateTime 自动填充
+│   │   ├── QuartzConfig.java          # DataPersistJob cron: "0 0/5 * * * ?"
+│   │   └── WebConfig.java             # CORS 全开放
+│   ├── controller/                    # 4 个 Controller，14 个接口
+│   ├── dto/                           # ArticleDTO, ArticleQueryDTO, CommentDTO
+│   ├── entity/                        # 5 实体（Article, Category, Tag, Comment, ArticleTag）
+│   ├── exception/                     # BlogException + GlobalExceptionHandler
+│   ├── job/
+│   │   └── DataPersistJob.java        # QuartzJobBean + ApplicationContextAware
+│   ├── mapper/ + mapper/*.xml         # 5 Mapper + 3 XML
+│   ├── service/impl/                  # 4 Service + 实现
+│   ├── util/RedisUtil.java            # Redis String/Key/Set/ZSet 操作
+│   └── vo/                            # 5 VO（ArticleVO, ArticleDetailVO, HotArticleVO, TagVO, CommentVO）
+├── docs/
+│   ├── init.sql                       # 建表 + 索引 + 种子数据
+│   └── INTERVIEW_POINTS.md            # 面试复习指南
+├── PROJECT_STRUCTURE.md               # 项目结构详解
+└── README.md
 ```
 
 ---
@@ -238,12 +302,14 @@ High-Performance-Caching-Blog-System/
 
 | 特点 | 说明 |
 |------|------|
-| **Redis 原子操作** | 浏览量 INCR、点赞 INCR/DECR，避免 DB 行锁竞争 |
-| **异步持久化** | 定时任务每 5 分钟将 Redis 数据同步到 MySQL |
-| **ZSet 动态排序** | 热点文章实时更新，ZREVRANGE 获取 TOP10 |
-| **Set 防重复** | 用户点赞记录存储在 Set 中，SISMEMBER 判断 |
-| **缓存过期** | 30 分钟过期时间防雪崩 |
-| **复合索引** | 文章表、评论表设计复合索引优化查询 |
+| **Redisson 全面使用** | 不用 Spring RedisTemplate，全部通过 Redisson AtomicLong/RSet/RLock/RBucket 操作 |
+| **异步持久化** | Quartz 每 5 分钟将 Redis 浏览量/点赞数批量同步到 MySQL |
+| **ZSet 动态排序** | 热点文章实时更新 score，ZREVRANGE 获取 TOP10 |
+| **Set 防重复点赞** | SISMEMBER O(1) 判断 + 分布式锁防并发 |
+| **缓存随机偏移** | TTL ±300s 随机偏移，防止缓存雪崩 |
+| **QuartzJobBean** | `ApplicationContextAware` 手动获取 Bean，解决 Quartz 无法注入 Spring Bean 问题 |
+| **楼中楼评论** | `CommentVO.replies` 嵌套子评论列表 |
+| **复合索引** | 文章表 3 个复合索引，评论表 1 个复合索引 |
 
 ---
 
@@ -251,39 +317,41 @@ High-Performance-Caching-Blog-System/
 
 ### 1. Redis 缓存
 
-**Q1: 如何解决缓存穿透？**
+**Q1: 如何选择 Redis 数据结构？**
 
 **参考答案**：
-> 1. **空值缓存**：查询结果为空时，缓存空值并设置短 TTL
-> 2. **布隆过滤器**：前置过滤不存在的数据
-> 3. **接口校验**：拦截非法请求
+> 1. **AtomicLong**：浏览量/点赞数，INCR/DECR 原子操作
+> 2. **ZSet**：热点文章排行，score = view_count，ZREVRANGE 获取 TOP10
+> 3. **Set**：点赞用户记录，SISMEMBER O(1) 判断是否已点赞
+> 4. **RBucket**：文章详情，JSON 序列化存储
+> 5. **RLock**：点赞/取消的并发控制
 
-**Q2: Redis 数据结构如何选型？**
+**Q2: 缓存过期策略如何设计？**
 
 **参考答案**：
-> 1. **String**：浏览量计数（INCR 原子操作）
-> 2. **ZSet**：热点文章排序（按 score 排序）
-> 3. **Set**：用户点赞记录（防重复，SISMEMBER 判断）
+> 1. **随机偏移**：基础 TTL ± 300s，防止大量 Key 同时过期
+> 2. **Cache-Aside**：读 miss 时从 DB 加载并缓存，写时先更新 DB 再删缓存
+> 3. **定时兜底**：Quartz 每 5 分钟同步，即使缓存丢失也不影响 DB 数据
 
 ### 2. 数据库优化
 
 **Q3: 索引设计原则？**
 
 **参考答案**：
-> 1. **最左前缀**：复合索引遵循最左前缀匹配
-> 2. **区分度**：高区分度字段放前面
-> 3. **覆盖索引**：尽量使用覆盖索引避免回表
-> 4. **避免过多索引**：索引会降低写入性能
+> 1. **复合索引最左前缀**：`(category_id, is_published)` 支持按分类+发布状态查询
+> 2. **高区分度字段在前**：`is_audit` 放在 `(article_id, is_audit, create_time)` 中间
+> 3. **覆盖索引**：`idx_view_count` 支持热门查询直接走索引
+> 4. **反范式冗余**：`article_count` 在 category/tag 表中冗余，避免 COUNT 查询
 
-### 3. 高并发处理
+### 3. Quartz 定时任务
 
-**Q4: 浏览量如何保证不丢失？**
+**Q4: 为什么 Quartz Job 不能用 @Autowired？**
 
 **参考答案**：
-> 1. **Redis 原子递增**：INCR 命令保证原子性
-> 2. **定时持久化**：Quartz 每 5 分钟同步到 MySQL
-> 3. **崩溃恢复**：重启后 DB 基础值 + Redis 增量值
-> 4. **异步写入**：不阻塞主流程
+> 1. **Quartz 自实例化**：Job 由 Quartz 框架直接 new，不走 Spring 容器
+> 2. **ApplicationContextAware**：实现该接口手动获取 Spring Bean
+> 3. **替代方案**：Spring `@Scheduled` 但不支持持久化和集群
+> 4. **选择 Quartz**：支持任务持久化、集群部署、misfire 策略
 
 ---
 
@@ -291,11 +359,11 @@ High-Performance-Caching-Blog-System/
 
 ### Q: 项目启动失败？
 
-检查 MySQL、Redis 是否启动，检查 `application.yml` 配置是否正确。
+检查 MySQL、Redis 是否启动，检查 `application.yml` 配置。
 
 ### Q: 缓存和数据库数据不一致？
 
-使用 Cache-Aside 模式：先更新 DB，再删除缓存。定时任务兜底同步。
+使用 Cache-Aside 模式：先更新 DB，再删除缓存。Quartz 定时任务兜底同步。
 
 ### Q: 热点文章缓存过期后怎么办？
 
