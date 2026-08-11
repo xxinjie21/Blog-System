@@ -9,10 +9,11 @@ spring:
     username: root
     password: root
   
-  redis:
-    host: localhost
-    port: 6379
-    database: 0
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      database: 0
 
 logging:
   level:
