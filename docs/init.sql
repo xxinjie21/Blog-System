@@ -9,6 +9,12 @@ DEFAULT COLLATE utf8mb4_unicode_ci;
 
 USE `blog_system`;
 
+-- 声明本连接以 utf8mb4 解析后续语句（防止客户端默认 latin1 导致中文乱码，与配置文件无关）
+SET NAMES utf8mb4;
+
+-- 关闭外键检查：表已存在时可安全 DROP（子表父表顺序不再受限），保证脚本可重复执行
+SET FOREIGN_KEY_CHECKS = 0;
+
 -- =====================================================
 -- 1. 文章表 blog_article
 -- =====================================================
@@ -150,3 +156,6 @@ INSERT INTO `blog_comment` (`article_id`, `user_name`, `user_email`, `content`, 
 (1, '用户 A', 'userA@example.com', '文章写得很好，学到了很多！', 1),
 (1, '用户 B', 'userB@example.com', '感谢分享，非常实用！', 1),
 (2, '用户 C', 'userC@example.com', '索引优化确实很重要，已实践！', 1);
+
+-- 重新开启外键检查
+SET FOREIGN_KEY_CHECKS = 1;

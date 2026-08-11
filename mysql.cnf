@@ -1,0 +1,7 @@
+# mysql 客户端连接默认使用 utf8mb4
+# 解决 docker-entrypoint-initdb.d 首次执行 init.sql 时中文乱码的问题
+[client]
+default-character-set = utf8mb4
+
+[mysql]
+default-character-set = utf8mb4
