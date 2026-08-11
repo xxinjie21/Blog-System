@@ -1,0 +1,41 @@
+name: CI/CD
+
+# 触发条件：推送到 master 时，或手动点击 Run workflow
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  # ============ Job 1：构建 + 测试 ============
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - run: mvn -B test
+
+  # ============ Job 2：构建镜像并推送到 GHCR ============
+  push-image:
+    needs: build                  # build 成功才执行
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write             # 允许推送 GHCR
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}   # 内置 token，无需手动建 PAT
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/high-performance-caching-blog-system:latest
