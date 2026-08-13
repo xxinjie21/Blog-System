@@ -15,8 +15,9 @@ services:
       - "3307:3306"                            # 宿主 3307 → 容器 3306（避开本机 MySQL 的 3306）
     volumes:
       - mysql-data:/var/lib/mysql                              # 数据卷：容器删了数据还在
-      - ./docs/init.sql:/docker-entrypoint-initdb.d/init.sql:ro  # 首次启动自动建表+种子数据
       - ./mysql.cnf:/etc/mysql/conf.d/charset.cnf:ro              # 客户端默认 utf8mb4，防初始化乱码
+      # 建表与种子数据不再用 init.sql，由 app 启动时的 Flyway 自动执行
+      # 脚本位置：src/main/resources/db/migration/V*.sql
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s

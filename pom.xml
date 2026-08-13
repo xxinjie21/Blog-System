@@ -32,6 +32,8 @@
         <lombok.version>1.18.34</lombok.version>
         <fastjson.version>2.0.32</fastjson.version>
         <guava.version>31.1-jre</guava.version>
+        <jjwt.version>0.12.6</jjwt.version>
+        <spring-security-crypto.version>6.3.4</spring-security-crypto.version>
     </properties>
 
     <dependencies>
@@ -85,6 +87,16 @@
             <version>${mysql.version}</version>
         </dependency>
 
+        <!-- Flyway 数据库迁移 - 应用启动自动执行 SQL 脚本 -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
+
         <!-- Quartz 定时任务 - 数据持久化 -->
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
@@ -118,6 +130,32 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>${guava.version}</version>
+        </dependency>
+
+        <!-- JWT 依赖 - 登录令牌签发与校验 -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Spring Security Crypto - 只引入密码加密 BCrypt，不引入完整 Security 框架 -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+            <version>${spring-security-crypto.version}</version>
         </dependency>
 
         <!-- 测试依赖 -->

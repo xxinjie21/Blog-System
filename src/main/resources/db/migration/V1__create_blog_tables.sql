@@ -1,24 +1,10 @@
 -- =====================================================
--- 高性能缓存博客系统 - 数据库初始化脚本
+-- V1: 建表脚本（Flyway 版本 1）
+-- Flyway 只执行一次，已执行的版本记录在 flyway_schema_history 表
+-- 命名规则：V<版本号>__<描述>.sql
 -- =====================================================
 
--- 创建数据库
-CREATE DATABASE IF NOT EXISTS `blog_system` 
-DEFAULT CHARACTER SET utf8mb4 
-DEFAULT COLLATE utf8mb4_unicode_ci;
-
-USE `blog_system`;
-
--- 声明本连接以 utf8mb4 解析后续语句（防止客户端默认 latin1 导致中文乱码，与配置文件无关）
-SET NAMES utf8mb4;
-
--- 关闭外键检查：表已存在时可安全 DROP（子表父表顺序不再受限），保证脚本可重复执行
-SET FOREIGN_KEY_CHECKS = 0;
-
--- =====================================================
 -- 1. 文章表 blog_article
--- =====================================================
-DROP TABLE IF EXISTS `blog_article`;
 CREATE TABLE `blog_article` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '文章 ID',
   `title` VARCHAR(200) NOT NULL COMMENT '文章标题',
@@ -46,10 +32,7 @@ CREATE TABLE `blog_article` (
   KEY `idx_create_published` (`is_published`, `create_time`) COMMENT '联合索引 - 已发布文章按时间排序'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章表';
 
--- =====================================================
 -- 2. 文章分类表 blog_category
--- =====================================================
-DROP TABLE IF EXISTS `blog_category`;
 CREATE TABLE `blog_category` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '分类 ID',
   `name` VARCHAR(50) NOT NULL COMMENT '分类名称',
@@ -65,10 +48,7 @@ CREATE TABLE `blog_category` (
   KEY `idx_sort_order` (`sort_order`) COMMENT '排序索引 - 支持分类列表排序'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章分类表';
 
--- =====================================================
 -- 3. 文章标签表 blog_tag
--- =====================================================
-DROP TABLE IF EXISTS `blog_tag`;
 CREATE TABLE `blog_tag` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '标签 ID',
   `name` VARCHAR(50) NOT NULL COMMENT '标签名称',
@@ -81,10 +61,7 @@ CREATE TABLE `blog_tag` (
   KEY `idx_article_count` (`article_count`) COMMENT '文章数索引 - 支持热门标签查询'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章标签表';
 
--- =====================================================
 -- 4. 文章 - 标签关联表 blog_article_tag
--- =====================================================
-DROP TABLE IF EXISTS `blog_article_tag`;
 CREATE TABLE `blog_article_tag` (
   `article_id` BIGINT NOT NULL COMMENT '文章 ID',
   `tag_id` BIGINT NOT NULL COMMENT '标签 ID',
@@ -96,10 +73,7 @@ CREATE TABLE `blog_article_tag` (
   CONSTRAINT `fk_article_tag_tag` FOREIGN KEY (`tag_id`) REFERENCES `blog_tag` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章 - 标签关联表';
 
--- =====================================================
 -- 5. 文章评论表 blog_comment
--- =====================================================
-DROP TABLE IF EXISTS `blog_comment`;
 CREATE TABLE `blog_comment` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '评论 ID',
   `article_id` BIGINT NOT NULL COMMENT '文章 ID',
@@ -120,10 +94,7 @@ CREATE TABLE `blog_comment` (
   KEY `idx_user_email` (`user_email`) COMMENT '用户邮箱索引 - 支持用户评论查询'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章评论表';
 
--- =====================================================
 -- 6. 用户表 blog_user（JWT 登录）
--- =====================================================
-DROP TABLE IF EXISTS `blog_user`;
 CREATE TABLE `blog_user` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '用户 ID',
   `username` VARCHAR(50) NOT NULL COMMENT '用户名',
@@ -140,47 +111,3 @@ CREATE TABLE `blog_user` (
   UNIQUE KEY `uk_username` (`username`) COMMENT '用户名唯一索引',
   UNIQUE KEY `uk_email` (`email`) COMMENT '邮箱唯一索引'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
-
--- 插入默认管理员账号（密码为 123456 的 BCrypt 值）
-INSERT INTO `blog_user` (`username`, `password`, `nickname`, `email`, `phone`, `status`) VALUES
-('admin', '$2b$10$obA9noReDE8Q4vzqukAVrOM3lLWzQ2uG4eRzaMJZjcs7ig7B2drh.', '管理员', 'admin@blog.com', '13800138000', 1);
-
--- =====================================================
--- 初始化数据
--- =====================================================
-
--- 插入分类数据
-INSERT INTO `blog_category` (`name`, `slug`, `description`, `sort_order`) VALUES
-('Java 技术', 'java-tech', 'Java 相关技术文章', 1),
-('前端开发', 'frontend-dev', '前端开发技术文章', 2),
-('数据库', 'database', '数据库技术文章', 3),
-('架构设计', 'architecture', '系统架构设计文章', 4),
-('职场心得', 'career', '职场经验分享', 5);
-
--- 插入标签数据
-INSERT INTO `blog_tag` (`name`, `slug`) VALUES
-('SpringBoot', 'springboot'),
-('Redis', 'redis'),
-('MySQL', 'mysql'),
-('微服务', 'microservices'),
-('Vue', 'vue'),
-('React', 'react'),
-('Docker', 'docker'),
-('Kubernetes', 'kubernetes'),
-('JVM', 'jvm'),
-('多线程', 'multithreading');
-
--- 插入示例文章
-INSERT INTO `blog_article` (`title`, `summary`, `content`, `category_id`, `author`, `is_published`, `is_top`) VALUES
-('SpringBoot 整合 Redis 实现缓存优化', '详细介绍 SpringBoot 如何整合 Redis 实现缓存优化，包括配置、序列化、缓存策略等', '正文内容...', 1, '张三', 1, 1),
-('MySQL 索引优化实战指南', '从实际案例出发，讲解 MySQL 索引优化的技巧和最佳实践', '正文内容...', 3, '李四', 1, 0),
-('Redis 缓存穿透、雪崩、击穿解决方案', '全面解析 Redis 缓存问题的成因和解决方案', '正文内容...', 3, '张三', 1, 0);
-
--- 插入示例评论
-INSERT INTO `blog_comment` (`article_id`, `user_name`, `user_email`, `content`, `is_audit`) VALUES
-(1, '用户 A', 'userA@example.com', '文章写得很好，学到了很多！', 1),
-(1, '用户 B', 'userB@example.com', '感谢分享，非常实用！', 1),
-(2, '用户 C', 'userC@example.com', '索引优化确实很重要，已实践！', 1);
-
--- 重新开启外键检查
-SET FOREIGN_KEY_CHECKS = 1;
