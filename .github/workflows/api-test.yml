@@ -3,19 +3,24 @@ name: Automated API Tests
 on: [push, pull_request]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js environment
-        uses: actions/setup-node@v2
+      # 先在 runner 里拉起 mysql + redis + app，localhost:8080 才有服务可测
+      - name: Start stack (mysql + redis + app)
+        run: docker compose up -d --wait
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '14'
+          node-version: 20
 
       - name: Install Apifox CLI
         run: npm install -g apifox-cli
 
       - name: Running Test Scenario
-        run: apifox run --access-token $APIFOX_ACCESS_TOKEN -t 8621815 -e 48190079 -n 1 -r html,cli
+        env:
+          APIFOX_ACCESS_TOKEN: ${{ secrets.APIFOX_ACCESS_TOKEN }}
+        run: apifox run --access-token "$APIFOX_ACCESS_TOKEN" -t 8621815 -e 48190079 -n 1 -r html,cli
