@@ -1,4 +1,38 @@
-# 项目排除路径
-/target/
-/.m2/
-/.idea
+# 编译产物
+target/
+*.class
+
+# IDE 配置
+.idea/
+.settings/
+.classpath
+.project
+.factorypath
+
+# 日志文件
+*.log
+logs/
+
+# Maven 本地配置
+settings.xml
+
+# SSH 密钥（绝对不能提交私钥）
+xxx123456
+xxx123456.pub
+
+# Flyway 迁移前的旧脚本
+docs/init.sql
+
+# Docker 数据卷
+mysql-data/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 临时文件
+*.tmp
+*.swp
+
+# 环境变量文件
+.env

@@ -34,6 +34,7 @@
         <guava.version>31.1-jre</guava.version>
         <jjwt.version>0.12.6</jjwt.version>
         <spring-security-crypto.version>6.3.4</spring-security-crypto.version>
+        <springdoc.version>2.6.0</springdoc.version>
     </properties>
 
     <dependencies>
@@ -156,6 +157,13 @@
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
             <version>${spring-security-crypto.version}</version>
+        </dependency>
+
+        <!-- SpringDoc OpenAPI - 自动生成 API 文档（Swagger UI） -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
         </dependency>
 
         <!-- 测试依赖 -->
